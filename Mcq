@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced MCQ Quiz App</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Orbitron:wght@500&display=swap" rel="stylesheet">
+<style>
+body {
+  font-family: 'Poppins', sans-serif;
+}
+
+.animated-bg {
+  background: linear-gradient(-45deg, #0f2027, #2c5364, #1c1c1c, #3a0ca3);
+  background-size: 400% 400%;
+  animation: gradientMove 10s ease infinite;
+}
+
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.glass {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+#question {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+}
+
+.option-card {
+  transition: all 0.3s ease;
+  border-radius: 12px;
+}
+
+.option-card:hover {
+  transform: scale(1.05);
+}
+
+.opt1 { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
+.opt2 { background: linear-gradient(135deg, #36d1dc, #5b86e5); }
+.opt3 { background: linear-gradient(135deg, #00c9ff, #92fe9d); }
+.opt4 { background: linear-gradient(135deg, #f7971e, #ffd200); }
+
+</style></head>
+
+<body class="animated-bg text-white flex items-center justify-center min-h-screen">
+
+<a href="#" class="fixed bottom-5 right-5 bg-blue-600 p-4 rounded-full">📢</a>
+<a href="#" class="fixed bottom-5 left-5 bg-green-600 p-4 rounded-full">💬</a>
+
+<div class="w-full max-w-2xl bg-gray-800 p-6 rounded-2xl shadow-lg">
+
+<div class="flex justify-center gap-4 mb-4">
+<a href="#" class="bg-blue-600 px-4 py-2 rounded-lg">📢 Join Telegram</a>
+<a href="#" class="bg-green-600 px-4 py-2 rounded-lg">💬 Join WhatsApp</a>
+</div>
+
+<h1 class="text-xl font-bold mb-4 text-center">MCQ Quiz</h1>
+
+<div id="subjectBox">
+
+  <h2 class="text-lg mb-3 text-center">Select करें</h2>
+
+  <!-- LEVEL 1 -->
+  <select id="level1" onchange="loadLevel2()" class="w-full p-3 rounded bg-gray-700 mb-2">
+    <option value="">-- Category चुनें --</option>
+    <option value="History">History</option>
+    <option value="Geography">Geography</option>
+    <option value="Polity">Polity</option>
+    <option value="Economy">Economy</option>
+    <option value="Science & Technology">Science & Technology</option>
+    <option value="Environment">Environment</option>
+    <option value="Ethics">Ethics</option>
+    <option value="Current Affairs">Current Affairs</option>
+  </select>
+
+  <!-- LEVEL 2 -->
+  <select id="level2" onchange="loadLevel3()" class="w-full p-3 rounded bg-gray-700 mb-2 hidden">
+    <option value="">-- Section चुनें --</option>
+  </select>
+
+  <!-- LEVEL 3 -->
+  <select id="level3" onchange="loadChapters()" class="w-full p-3 rounded bg-gray-700 mb-2 hidden">
+    <option value="">-- Subject चुनें --</option>
+  </select>
+
+  <!-- CHAPTER -->
+  <select id="chapterSelect" onchange="startFromDropdown()" class="w-full p-3 rounded bg-gray-700 hidden">
+    <option value="">-- Chapter चुनें --</option>
+  </select>
+
+</div>
+
+<div id="quizBox" class="hidden">
+<div class="flex justify-between mb-2">
+<div>⏱️ <span id="time">30</span>s</div>
+<div>Score: <span id="score">0</span></div>
+</div>
+
+<div class="w-full bg-gray-700 h-2 rounded mb-4">
+<div id="progress" class="bg-blue-500 h-2 rounded" style="width:0%"></div>
+</div>
+
+<h2 id="question" class="mb-4"></h2>
+<div id="options" class="grid grid-cols-2 gap-4"></div>
+
+<div id="explanation" class="hidden mt-4 p-3 bg-gray-700 rounded"></div>
+
+<div class="flex justify-between mt-6">
+<button onclick="goBack()" class="bg-gray-600 px-4 py-2 rounded">Back</button>
+<button onclick="openExitPopup()" class="bg-red-500 px-4 py-2 rounded">Exit</button>
+<button onclick="nextQuestion()" class="bg-blue-500 px-4 py-2 rounded">Next</button>
+</div>
+</div>
+
+<div id="resultBox" class="hidden text-center">
+<h2 class="text-xl font-bold mb-4">Result</h2>
+<p>Total Attempted: <span id="attempted"></span></p>
+<p>Correct: <span id="correct"></span></p>
+<p>Wrong: <span id="wrong"></span></p>
+
+<button onclick="retakeWrong()" class="mt-4 bg-red-500 px-4 py-2 rounded">Retake Wrong</button>
+<button onclick="restartQuiz()" class="mt-4 bg-blue-500 px-4 py-2 rounded">Restart</button>
+</div>
+
+</div>
+
+<script>
+const level1 = document.getElementById("level1");
+const level2 = document.getElementById("level2");
+const level3 = document.getElementById("level3");
+const chapterSelect = document.getElementById("chapterSelect");
+
+const subjectBox = document.getElementById("subjectBox");
+const quizBox = document.getElementById("quizBox");
+const resultBox = document.getElementById("resultBox");
+
+const time = document.getElementById("time");
+const progress = document.getElementById("progress");
+const explanation = document.getElementById("explanation");
+function saveState(){
+  localStorage.setItem("quizState", JSON.stringify({
+    fullQuestions,
+    questions,
+    current,
+    score,
+    userAnswers,
+    wrongList,
+    page
+  }));
+}
+function loadState(){
+  let saved = localStorage.getItem("quizState");
+  if(!saved) return;
+
+  let state = JSON.parse(saved);
+
+  fullQuestions = state.fullQuestions || [];
+  questions = state.questions || [];
+  current = state.current || 0;
+  score = state.score || 0;
+  userAnswers = state.userAnswers || [];
+  wrongList = state.wrongList || [];
+  page = state.page || 0;
+
+  document.getElementById("score").innerText = score;
+
+  // अगर quiz चल रहा था
+  if(fullQuestions.length > 0){
+    subjectBox.classList.add("hidden");
+    quizBox.classList.remove("hidden");
+    loadQuestion();
+  }
+}
+function shuffle(arr){
+for(let i = arr.length - 1; i > 0; i--){
+let j = Math.floor(Math.random() * (i + 1));
+[arr[i], arr[j]] = [arr[j], arr[i]];
+}
+return arr;
+}
+function removeDuplicates(arr){
+  return arr.filter((item, index, self) =>
+    index === self.findIndex(q => q.q === item.q)
+  );
+}
+// 🔥 👉 YAHI MCQ ADD KARNA HAI (UNLIMITED)
+let data = {
+
+  // =========================
+  // 📘 HISTORY (UPSC CORE)
+  // =========================
+  "History": {
+
+    "Ancient India": {
+      "Prehistoric Age": {
+        "Palaeolithic": [
+{
+qNo: 1,
+q: "पुरापाषाण काल का अर्थ क्या है?",
+options: ["नया पत्थर युग", "पुराना पत्थर युग", "धातु युग", "मध्य युग"],
+answer: 1,
+exp: "Palaeolithic का अर्थ Old Stone Age (पुराना पत्थर युग) होता है।"
+},
+{
+qNo: 2,
+q: "पुरापाषाण काल को कितने भागों में बाँटा गया है?",
+options: ["2", "3", "4", "5"],
+answer: 1,
+exp: "इसे तीन भागों में बाँटा गया है—Lower, Middle, Upper Paleolithic।"
+},
+{
+qNo: 3,
+q: "भारत में पुरापाषाण काल का प्रमुख स्थल कौन सा है?",
+options: ["हड़प्पा", "भीमबेटका", "लोथल", "कालीबंगन"],
+answer: 1,
+exp: "भीमबेटका (MP) शैलचित्रों के लिए प्रसिद्ध है। PYQ – SSC CGL 2018 में पूछा गया।"
+},
+{
+qNo: 4,
+q: "पुरापाषाण काल में मुख्य औजार किससे बने होते थे?",
+options: ["लोहा", "कांसा", "पत्थर", "तांबा"],
+answer: 2,
+exp: "इस काल में पत्थर के औजारों का उपयोग होता था।"
+},
+{
+qNo: 5,
+q: "भीमबेटका की गुफाएँ कहाँ स्थित हैं?",
+options: ["उत्तर प्रदेश", "मध्य प्रदेश", "बिहार", "राजस्थान"],
+answer: 1,
+exp: "यह मध्य प्रदेश के रायसेन जिले में स्थित हैं। PYQ – UPSC Prelims 2014।"
+},
+{
+qNo: 6,
+q: "पुरापाषाण काल के लोग क्या करते थे?",
+options: ["खेती", "व्यापार", "शिकार और संग्रह", "उद्योग"],
+answer: 2,
+exp: "ये लोग hunter-gatherer थे यानी शिकार और संग्रह करते थे।"
+},
+{
+qNo: 7,
+q: "Handaxe किस काल का प्रमुख औजार है?",
+options: ["मध्य पाषाण", "नवपाषाण", "पुरापाषाण", "धातु युग"],
+answer: 2,
+exp: "Handaxe पुरापाषाण काल का प्रमुख औजार था। PYQ – SSC 2020।"
+},
+{
+qNo: 8,
+q: "पुरापाषाण काल में आग का उपयोग कब शुरू हुआ?",
+options: ["प्रारंभिक", "मध्य", "अंतिम", "नवपाषाण"],
+answer: 2,
+exp: "Upper Paleolithic में आग का उपयोग शुरू हुआ।"
+},
+{
+qNo: 9,
+q: "बेलन घाटी कहाँ स्थित है?",
+options: ["बिहार", "उत्तर प्रदेश", "राजस्थान", "MP"],
+answer: 1,
+exp: "बेलन घाटी उत्तर प्रदेश में है। PYQ – UPPCS 2017।"
+},
+{
+qNo: 10,
+q: "पुरापाषाण काल के लोग कहाँ रहते थे?",
+options: ["पक्के घर", "झोपड़ी", "गुफाएँ", "महल"],
+answer: 2,
+exp: "वे गुफाओं में रहते थे और घुमंतू जीवन जीते थे।"
+},
+{
+qNo: 11,
+q: "Soan Valley कहाँ स्थित है?",
+options: ["भारत", "पाकिस्तान", "नेपाल", "चीन"],
+answer: 1,
+exp: "Soan Valley पाकिस्तान में स्थित है। PYQ – SSC 2016।"
+},
+{
+qNo: 12,
+q: "पुरापाषाण काल का जीवन कैसा था?",
+options: ["स्थायी", "अस्थायी", "शहरी", "औद्योगिक"],
+answer: 1,
+exp: "लोग घुमंतू थे इसलिए जीवन अस्थायी था।"
+},
+{
+qNo: 13,
+q: "सबसे प्राचीन मानव किस काल में पाया गया?",
+options: ["नवपाषाण", "मध्य पाषाण", "पुरापाषाण", "लौह युग"],
+answer: 2,
+exp: "सबसे प्राचीन मानव पुरापाषाण काल में पाया गया।"
+},
+{
+qNo: 14,
+q: "Adamgarh स्थल कहाँ स्थित है?",
+options: ["बिहार", "मध्य प्रदेश", "UP", "गुजरात"],
+answer: 1,
+exp: "Adamgarh मध्य प्रदेश में स्थित है। PYQ – MPPSC 2019।"
+},
+{
+qNo: 15,
+q: "पुरापाषाण काल में लोग किस पर निर्भर थे?",
+options: ["खेती", "शिकार", "उद्योग", "व्यापार"],
+answer: 1,
+exp: "वे शिकार और संग्रह पर निर्भर थे।"
+},
+{
+qNo: 16,
+q: "Quartzite का उपयोग किस लिए होता था?",
+options: ["कपड़ा", "औजार", "भोजन", "घर"],
+answer: 1,
+exp: "Quartzite पत्थर से औजार बनाए जाते थे।"
+},
+{
+qNo: 17,
+q: "पुरापाषाण काल का समाज कैसा था?",
+options: ["वर्ग विभाजित", "समान", "जाति आधारित", "औद्योगिक"],
+answer: 1,
+exp: "समाज में समानता थी, कोई वर्ग विभाजन नहीं था।"
+},
+{
+qNo: 18,
+q: "Hunsgi Valley कहाँ स्थित है?",
+options: ["कर्नाटक", "बिहार", "UP", "MP"],
+answer: 0,
+exp: "Hunsgi Valley कर्नाटक में है। PYQ – SSC 2019।"
+},
+{
+qNo: 19,
+q: "पुरापाषाण काल में कपड़े किससे बनते थे?",
+options: ["कपास", "ऊन", "पशु खाल", "रेशम"],
+answer: 2,
+exp: "लोग पशुओं की खाल से कपड़े बनाते थे।"
+},
+{
+qNo: 20,
+q: "Narmada Valley क्यों प्रसिद्ध है?",
+options: ["खेती", "मानव अवशेष", "उद्योग", "व्यापार"],
+answer: 1,
+exp: "यहाँ मानव के प्राचीन अवशेष मिले हैं। PYQ – UPSC 2012।"
+},
+{
+qNo: 21,
+q: "पुरापाषाण काल में कला का प्रमाण कहाँ मिलता है?",
+options: ["मंदिर", "गुफा चित्र", "पुस्तक", "मूर्ति"],
+answer: 1,
+exp: "गुफा चित्रों में कला के प्रमाण मिलते हैं।"
+},
+{
+qNo: 22,
+q: "Bhimbetka paintings किससे बनी हैं?",
+options: ["तेल", "प्राकृतिक रंग", "केमिकल", "पानी"],
+answer: 1,
+exp: "प्राकृतिक रंगों का उपयोग किया गया था।"
+},
+{
+qNo: 23,
+q: "पुरापाषाण काल का मुख्य भोजन क्या था?",
+options: ["अनाज", "फल और मांस", "दाल", "दूध"],
+answer: 1,
+exp: "लोग फल, जड़ और मांस खाते थे।"
+},
+{
+qNo: 24,
+q: "Kurnool caves कहाँ स्थित हैं?",
+options: ["तमिलनाडु", "आंध्र प्रदेश", "UP", "बिहार"],
+answer: 1,
+exp: "Kurnool caves आंध्र प्रदेश में हैं। PYQ – SSC 2017।"
+},
+{
+qNo: 25,
+q: "पुरापाषाण काल में धर्म कैसा था?",
+options: ["विकसित", "प्रारंभिक", "जटिल", "संगठित"],
+answer: 1,
+exp: "धर्म प्रारंभिक अवस्था में था।"
+},
+{
+qNo: 26,
+q: "Flake tools किस काल के हैं?",
+options: ["मध्य पाषाण", "पुरापाषाण", "नवपाषाण", "धातु युग"],
+answer: 1,
+exp: "Flake tools पुरापाषाण काल में उपयोग होते थे।"
+},
+{
+qNo: 27,
+q: "पुरापाषाण काल में जनसंख्या कैसी थी?",
+options: ["अधिक", "कम", "स्थिर", "तेजी से बढ़ती"],
+answer: 1,
+exp: "कम जनसंख्या थी क्योंकि संसाधन सीमित थे।"
+},
+{
+qNo: 28,
+q: "Rock shelters का अर्थ क्या है?",
+options: ["घर", "गुफा आश्रय", "खेत", "दुकान"],
+answer: 1,
+exp: "Rock shelters का मतलब गुफा जैसे प्राकृतिक आश्रय होता है।"
+},
+{
+qNo: 29,
+q: "पुरापाषाण काल के अंत में क्या शुरू हुआ?",
+options: ["खेती", "उद्योग", "धातु", "व्यापार"],
+answer: 0,
+exp: "अंत में कृषि की शुरुआत हुई जो नवपाषाण काल में विकसित हुई।"
+},
+{
+qNo: 30,
+q: "पुरापाषाण काल का सबसे बड़ा योगदान क्या है?",
+options: ["खेती", "औजार निर्माण", "व्यापार", "लेखन"],
+answer: 1,
+exp: "औजार निर्माण मानव विकास का सबसे बड़ा योगदान था।"
+}
+],
+        "Mesolithic": [],
+        "Neolithic": []
+      },
+
+      "Harappan Civilization": {
+        "Urban Planning": [],
+        "Economy": [],
+        "Religion": [],
+        "Decline": []
+      },
+
+      "Vedic Period": {
+        "Early Vedic": [],
+        "Later Vedic": []
+      },
+
+      "Buddhism & Jainism": {
+        "Buddhism": [],
+        "Jainism": []
+      },
+
+      "Maurya Empire": {
+        "Chandragupta Maurya": [],
+        "Ashoka": [],
+        "Administration": []
+      },
+
+      "Post Mauryan": {
+        "Sunga": [],
+        "Kushana": [],
+        "Satavahana": []
+      }
+    },
+
+    "Medieval India": {
+      "Delhi Sultanate": {
+        "Slave Dynasty": [],
+        "Khilji": [],
+        "Tughlaq": [],
+        "Lodi": []
+      },
+
+      "Mughal Empire": {
+        "Babur": [],
+        "Akbar": [],
+        "Aurangzeb": [],
+        "Decline": []
+      },
+
+      "Bhakti & Sufi Movement": {
+        "Bhakti Saints": [],
+        "Sufi Orders": []
+      }
+    },
+
+    "Modern India": {
+      "European Arrival": [],
+      "British Expansion": [],
+      "Revolt of 1857": [],
+      "INC Formation": [],
+      "Freedom Movement": {
+        "Moderates": [],
+        "Extremists": [],
+        "Gandhian Phase": [],
+        "Revolutionaries": []
+      },
+      "Partition & Independence": []
+    },
+
+    "Art & Culture": {
+      "Indian Architecture": [],
+      "Paintings": [],
+      "Dance Forms": [],
+      "Music": [],
+      "UNESCO Sites": []
+    }
+  },
+
+  // =========================
+  // 🌍 GEOGRAPHY (UPSC CORE)
+  // =========================
+  "Geography": {
+
+    "Physical Geography": {
+      "Earth Structure": [],
+      "Geomorphology": [],
+      "Climate": [],
+      "Oceanography": [],
+      "Biogeography": []
+    },
+
+    "Indian Geography": {
+      "Rivers": [],
+      "Soils": [],
+      "Agriculture": [],
+      "Minerals": [],
+      "Industries": [],
+      "Transport": []
+    },
+
+    "World Geography": {
+      "Continents": [],
+      "Countries": [],
+      "Oceans": [],
+      "Climate Zones": []
+    },
+
+    "Environment & Ecology": {
+      "Ecosystem": [],
+      "Biodiversity": [],
+      "Climate Change": [],
+      "Pollution": [],
+      "Conservation": [],
+      "International Agreements": []
+    }
+  },
+
+  // =========================
+  // 🏛 POLITY
+  // =========================
+  "Polity": {
+
+    "Indian Constitution": {
+      "Making of Constitution": [],
+      "Preamble": [],
+      "Fundamental Rights": [],
+      "Directive Principles": [],
+      "Fundamental Duties": []
+    },
+
+    "Union Government": {
+      "President": [],
+      "Prime Minister": [],
+      "Parliament": {
+        "Lok Sabha": [],
+        "Rajya Sabha": []
+      },
+      "Supreme Court": []
+    },
+
+    "State Government": {
+      "Governor": [],
+      "CM": [],
+      "State Legislature": []
+    },
+
+    "Local Government": {
+      "Panchayati Raj": [],
+      "Municipalities": []
+    },
+
+    "Constitutional Bodies": {
+      "ECI": [],
+      "UPSC": [],
+      "CAG": [],
+      "Finance Commission": []
+    },
+
+    "Non-Constitutional Bodies": {
+      "NITI Aayog": [],
+      "NHRC": [],
+      "CVC": []
+    }
+  },
+
+  // =========================
+  // 💰 ECONOMY
+  // =========================
+  "Economy": {
+
+    "Basic Concepts": {
+      "GDP": [],
+      "Inflation": [],
+      "Budget": [],
+      "Banking": []
+    },
+
+    "Indian Economy": {
+      "Agriculture": [],
+      "Industry": [],
+      "Services": [],
+      "Taxation": [],
+      "Public Finance": []
+    },
+
+    "Money & Banking": {
+      "RBI": [],
+      "Monetary Policy": [],
+      "Inflation Control": []
+    },
+
+    "External Sector": {
+      "Export Import": [],
+      "WTO": [],
+      "Balance of Payments": []
+    }
+  },
+
+  // =========================
+  // 🔬 SCIENCE & TECH
+  // =========================
+  "Science & Technology": {
+
+    "Physics": {
+      "Mechanics": [],
+      "Heat": [],
+      "Electricity": [],
+      "Magnetism": [],
+      "Waves": []
+    },
+
+    "Chemistry": {
+      "Atomic Structure": [],
+      "Acids Bases": [],
+      "Organic Chemistry": [],
+      "Periodic Table": []
+    },
+
+    "Biology": {
+      "Cell Biology": [],
+      "Human Physiology": [],
+      "Genetics": [],
+      "Diseases": []
+    },
+
+    "Technology": {
+      "AI": [],
+      "Space Technology": [],
+      "Biotech": [],
+      "IT & Computers": []
+    }
+  },
+
+  // =========================
+  // 🌱 ENVIRONMENT
+  // =========================
+  "Environment": {
+
+    "Ecology": {
+      "Food Chain": [],
+      "Food Web": [],
+      "Ecosystem": []
+    },
+
+    "Biodiversity": {
+      "Hotspots": [],
+      "Species": [],
+      "Conservation": []
+    },
+
+    "Climate Change": {
+      "Global Warming": [],
+      "Greenhouse Gases": [],
+      "Paris Agreement": []
+    }
+  },
+
+  // =========================
+  // 🧠 ETHICS (GS4)
+  // =========================
+  "Ethics": {
+
+    "Ethical Philosophy": [],
+    "Integrity": [],
+    "Attitude": [],
+    "Emotional Intelligence": [],
+    "Public Service Values": [],
+    "Case Studies": []
+  },
+
+  // =========================
+  // 🇮🇳 CURRENT AFFAIRS
+  // =========================
+  "Current Affairs": {
+
+    "National": [],
+    "International": [],
+    "Economy": [],
+    "Science & Tech": [],
+    "Environment": [],
+    "Government Schemes": [],
+    "Defense": [],
+    "Reports & Indexes": []
+  }
+};
+
+let questions=[], selectedSubject=null;
+let current=0,score=0,timeLeft=30,timer;
+let userAnswers=[],wrongList=[];
+let fullQuestions = [];
+let page = 0;
+let pageSize = 50;
+
+function loadLevel2(){
+  let cat = level1.value;
+  if(!cat) return;
+
+  let html = '<option value="">-- Section चुनें --</option>';
+
+  Object.keys(data[cat]).forEach(sec=>{
+    html += `<option value="${sec}">${sec}</option>`;
+  });
+
+  level2.innerHTML = html;
+  level2.classList.remove("hidden");
+
+  level3.classList.add("hidden");
+  chapterSelect.classList.add("hidden");
+}
+
+function loadLevel3(){
+  let cat = level1.value;
+  let sec = level2.value;
+  if(!cat || !sec) return;
+
+  let html = '<option value="">-- Subject चुनें --</option>';
+
+  Object.keys(data[cat][sec]).forEach(sub=>{
+    html += `<option value="${sub}">${sub}</option>`;
+  });
+
+  level3.innerHTML = html;
+  level3.classList.remove("hidden");
+
+  chapterSelect.classList.add("hidden");
+}
+
+function loadChapters(){
+
+  let cat = level1.value;
+  let sec = level2.value;
+  let sub = level3.value;
+
+  if(!cat || !sec || !sub) return;
+
+  selectedSubject = {cat, sec, sub};
+
+  let html='<option value="">-- Chapter चुनें --</option>';
+
+  Object.keys(data[cat][sec][sub]).forEach(ch=>{
+    html+=`<option value="${ch}">${ch}</option>`;
+  });
+
+  chapterSelect.innerHTML=html;
+  chapterSelect.classList.remove("hidden");
+}
+
+// 🔥 CHAPTER LOAD (FAST + OPTIMIZED)
+function startFromDropdown(){
+
+  let ch = chapterSelect.value;
+  if(!ch) return;
+
+  let {cat, sec, sub} = selectedSubject;
+
+  // ✅ YE CHECK ADD KARO
+  if(!data[cat][sec][sub][ch] || data[cat][sec][sub][ch].length === 0){
+    alert("No questions available");
+    return;
+  }
+
+  fullQuestions = shuffle(
+  removeDuplicates(data[cat][sec][sub][ch])
+);
+
+  page = 0;
+subjectBox.classList.add("hidden");
+quizBox.classList.remove("hidden");
+startQuiz();
+}
+function startQuiz(){
+current=0;
+score=0;
+userAnswers=[];
+wrongList=[];
+
+loadPage(); // 🔥 सबसे जरूरी FIX
+}
+
+function loadPage(){
+  let start = page * pageSize;
+  let end = start + pageSize;
+
+  questions = fullQuestions.slice(start, end);
+
+  current = 0;
+  loadQuestion();
+}
+function startTimer(){
+clearInterval(timer);
+timeLeft=30;
+time.innerText=timeLeft;
+
+timer=setInterval(()=>{
+timeLeft--;
+time.innerText=timeLeft;
+
+if(timeLeft<=0){
+clearInterval(timer);
+let idx = page * pageSize + current;
+
+if(userAnswers[idx] == null){
+userAnswers[idx] = -1; // ✅ FIX: mark attempted
+addWrong(questions[current]);
+nextQuestion();
+}
+}
+},1000);
+}
+
+function loadQuestion(){
+if(!questions[current]) return showResult();
+
+startTimer();
+explanation.classList.add("hidden");
+
+let q=questions[current];
+
+// ✅ FIX: Auto numbering
+question.innerText = `Q${page * pageSize + current + 1} / ${fullQuestions.length} : ${q.q}`;
+
+let html="";
+q.options.forEach((opt,i)=>{
+let colors = ["opt1","opt2","opt3","opt4"];
+let selected = userAnswers[page * pageSize + current] == i
+  ? colors[i] + " ring-2 ring-yellow-300 scale-105" 
+  : colors[i];
+
+html+=`<div onclick="selectOption(${i})" class="${selected} p-3 rounded cursor-pointer">${opt}</div>`;
+});
+
+options.innerHTML=html;
+let totalIndex = page * pageSize + current + 1;
+progress.style.width = (totalIndex / fullQuestions.length) * 100 + "%";
+}
+
+function addWrong(q){
+  if(!wrongList.some(x => x.q === q.q)){
+    wrongList.push(q);
+  }
+}
+
+function selectOption(i){
+let idx = page * pageSize + current;
+if(userAnswers[idx] != null) return;
+
+clearInterval(timer);
+
+let q=questions[current];
+userAnswers[idx] = i;
+saveState();
+let opts=document.querySelectorAll("#options div");
+opts.forEach(o=>o.style.pointerEvents="none");
+
+if(i===q.answer){
+opts[i].style.background = "green";
+score++;
+document.getElementById("score").innerText=score;
+}else{
+opts[i].style.background = "red";
+opts[q.answer].style.background = "green";
+addWrong(q);
+}
+
+explanation.innerText="Explanation: "+q.exp;
+explanation.classList.remove("hidden");
+
+setTimeout(nextQuestion,1500);
+}
+
+function nextQuestion(){
+saveState();
+current++;
+
+if(current >= questions.length){
+  page++;
+
+  // 🔥 अगर सारे questions खत्म
+  if(page * pageSize >= fullQuestions.length){
+    return showResult();
+  } else {
+    loadPage(); // next batch load
+    return;
+  }
+}
+
+loadQuestion();
+}
+
+function goBack(){
+clearInterval(timer);
+saveState();
+if(current > 0){
+    current--;
+    loadQuestion();
+  } else if(page > 0){
+    page--;
+    loadPage();
+    current = questions.length - 1;
+    loadQuestion();
+  }
+}
+function showResult(){
+  clearInterval(timer);
+
+  quizBox.classList.add("hidden");
+  resultBox.classList.remove("hidden");
+
+  let attemptedCount = userAnswers.filter(a => a != null).length;
+
+  attempted.innerText = attemptedCount;
+  correct.innerText = score;
+  wrong.innerText = attemptedCount - score;
+}
+
+// ✅ FIX: fullQuestions update
+function retakeWrong(){
+  fullQuestions = shuffle(
+    wrongList.filter((v,i,a)=>
+      a.findIndex(t=>t.q === v.q) === i
+    )
+  );
+
+  page = 0;
+  current = 0;
+  score = 0;
+  userAnswers = [];
+  wrongList = [];
+
+  resultBox.classList.add("hidden");
+  quizBox.classList.remove("hidden");
+
+  loadPage();
+}
+
+// 🔥 PERFECT RESTART
+function restartQuiz(){
+localStorage.removeItem("quizState");
+clearInterval(timer);
+
+current=0;
+score=0;
+userAnswers=[];
+wrongList=[];
+questions=[];
+selectedSubject=null;
+
+document.getElementById("score").innerText=0;
+time.innerText=30;
+progress.style.width="0%";
+explanation.classList.add("hidden");
+
+resultBox.classList.add("hidden");
+quizBox.classList.add("hidden");
+subjectBox.classList.remove("hidden");
+
+level1.value="";
+level2.value="";
+level3.value="";
+chapterSelect.value="";
+
+level2.classList.add("hidden");
+level3.classList.add("hidden");
+chapterSelect.classList.add("hidden");
+}
+
+function openExitPopup(){
+  const popup = document.getElementById("exitPopup");
+  
+  // अगर पहले से खुला है तो कुछ मत करो
+  if(!popup.classList.contains("hidden")) return;
+
+  popup.classList.remove("hidden");
+}
+
+function closeExitPopup(){
+  document.getElementById("exitPopup").classList.add("hidden");
+}
+
+function confirmExit(){
+  clearInterval(timer);
+localStorage.removeItem("quizState");
+  document.getElementById("exitPopup").classList.add("hidden");
+  quizBox.classList.add("hidden");
+  subjectBox.classList.remove("hidden");
+}
+window.onload = function(){
+  loadState();
+};
+</script>
+<div id="exitPopup" onclick="closeExitPopup()" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center">
+  
+  <div class="bg-gray-800 p-6 rounded-xl text-center w-80" onclick="event.stopPropagation()">
+    
+    <h2 class="text-lg mb-4">क्या आप quiz छोड़ना चाहते हैं?</h2>
+
+    <div class="flex justify-around">
+      <button onclick="confirmExit()" class="bg-red-500 px-4 py-2 rounded">Yes</button>
+      <button onclick="closeExitPopup()" class="bg-green-500 px-4 py-2 rounded">No</button>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
